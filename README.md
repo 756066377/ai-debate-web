@@ -89,6 +89,17 @@ src/
 └── routes.tsx      # 路由配置
 ```
 
+## 项目展示
+
+### 首页
+![首页](image/home.png)
+
+### 辩论过程
+![辩论过程](image/process.png)
+
+### 结果页
+![结果页](image/settlement.png)
+
 ## 开源协议
 
 本项目采用 MIT 协议开源。
