@@ -158,7 +158,7 @@ export function useDebateEngine(config: DebateConfig) {
     async (role: "affirmative" | "negative", previousMessages: DebateMessage[]) => {
       console.log(`开始获取${role === "affirmative" ? "正方" : "反方"}的回复`);
       const model = role === "affirmative" ? "deepseek-v3-1-250821" : "kimi-k2-250711";
-      const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY || "0a759134-964b-4aaa-b81c-4e6713540c72";
+      const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
       
       // 添加加载中的消息
       const messageId = generateId();
@@ -293,7 +293,7 @@ ${role === "affirmative" ? "你代表正方，必须坚决支持该观点。" : 
   // 调用主裁判API
   const fetchMainRefereeResponse = useCallback(
     async (messages: DebateMessage[]) => {
-      const apiKey = import.meta.env.VITE_DOUBAO_API_KEY || "sk-9d0c604bf1e9426ea672b28a9d2b2e0e";
+      const apiKey = import.meta.env.VITE_DOUBAO_API_KEY;
       const messageId = generateId();
       setState(prev => ({
         ...prev,
@@ -440,7 +440,7 @@ ${negativeMessages.map(msg => msg.content).join("\n\n")}`;
   // 调用副裁判API
   const fetchAssistantRefereeResponse = useCallback(
     async (messages: DebateMessage[]) => {
-      const apiKey = import.meta.env.VITE_KIMI_API_KEY || "0a759134-964b-4aaa-b81c-4e6713540c72";
+      const apiKey = import.meta.env.VITE_KIMI_API_KEY;
       const messageId = generateId();
       setState(prev => ({
         ...prev,

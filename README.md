@@ -34,6 +34,7 @@
      VITE_KIMI_API_KEY=your_kimi_api_key_here
      VITE_DOUBAO_API_KEY=your_doubao_api_key_here
      ```
+   - **注意：必须设置环境变量，否则项目将无法正常运行**
 
 4. 启动开发服务器：
    ```
@@ -54,6 +55,18 @@ npm run build
 ```
 npm run preview
 ```
+
+## GitHub仓库推送
+
+如果您希望将此项目推送到您自己的GitHub仓库，请按照以下步骤操作：
+
+1. 在GitHub上创建一个新的仓库（不要初始化README、.gitignore或license）
+2. 在项目根目录下运行以下命令：
+   ```
+   git remote add origin https://github.com/<your-username>/<your-repo-name>.git
+   git branch -M main
+   git push -u origin main
+   ```
 
 ## 技术栈
 
