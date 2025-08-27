@@ -82,6 +82,70 @@ npm run preview
 
 构建完成后，您将在 `src-tauri/target/release/bundle` 目录下找到生成的安装包。
 
+### 构建优化建议
+
+为了获得更小的安装包体积和更好的性能，您可以考虑以下优化措施：
+
+1. 启用Tauri的打包优化选项，在 `src-tauri/tauri.conf.json` 中配置：
+   ```json
+   "bundle": {
+     "active": true,
+     "targets": "all",
+     "identifier": "com.ai-debate-web.app",
+     "icon": [
+       "icons/32x32.png",
+       "icons/128x128.png",
+       "icons/128x128@2x.png",
+       "icons/icon.icns",
+       "icons/icon.ico"
+     ],
+     "resources": [],
+     "externalBin": [],
+     "copyright": "",
+     "category": "DeveloperTool",
+     "shortDescription": "",
+     "longDescription": "",
+     "deb": {
+       "depends": []
+     },
+     "macOS": {
+       "frameworks": [],
+       "minimumSystemVersion": "",
+       "exceptionDomain": "",
+       "signingIdentity": null,
+       "providerShortName": null,
+       "entitlements": null
+     },
+     "windows": {
+       "certificateThumbprint": null,
+       "digestAlgorithm": "sha256",
+       "timestampUrl": ""
+     }
+   }
+   ```
+
+2. 启用代码压缩，在 `src-tauri/Cargo.toml` 中配置：
+   ```toml
+   [profile.release]
+   panic = "abort"
+   codegen-units = 1
+   lto = true
+   incremental = false
+   opt-level = "s"
+   strip = true
+   ```
+
+### 常见问题解答
+
+**Q: 构建时出现 'identifier' 错误怎么办？**
+A: 请确保在 `src-tauri/tauri.conf.json` 中设置了唯一的应用标识符，不能使用默认的 `com.tauri.dev`。
+
+**Q: 如何为不同平台构建安装包？**
+A: 您可以通过修改 `tauri.conf.json` 中的 `bundle.targets` 配置来指定目标平台，或者在构建命令中添加 `--target` 参数。
+
+**Q: 如何自定义应用图标？**
+A: 替换 `src-tauri/icons` 目录下的所有图标文件，确保包含各种尺寸的图标以适配不同平台。
+
 ## 📦 GitHub仓库推送
 
 如果您希望将此项目推送到您自己的GitHub仓库，请按照以下步骤操作：
