@@ -61,6 +61,27 @@ npm run build
 npm run preview
 ```
 
+### 桌面应用部署 (Tauri)
+
+本项目支持使用 Tauri 构建桌面应用，以减少内存占用。
+
+1. 安装 Tauri 依赖：
+   ```bash
+   npm install @tauri-apps/cli @tauri-apps/api --save-dev
+   ```
+
+2. 初始化 Tauri 配置：
+   ```bash
+   npx tauri init
+   ```
+
+3. 构建桌面应用：
+   ```bash
+   npm run tauri build
+   ```
+
+构建完成后，您将在 `src-tauri/target/release/bundle` 目录下找到生成的安装包。
+
 ## 📦 GitHub仓库推送
 
 如果您希望将此项目推送到您自己的GitHub仓库，请按照以下步骤操作：

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { aiService, APIError } from "../lib/api-service";
 
 // 辩论配置类型
 export interface DebateConfig {
@@ -157,8 +158,6 @@ export function useDebateEngine(config: DebateConfig) {
   const fetchAIResponse = useCallback(
     async (role: "affirmative" | "negative", previousMessages: DebateMessage[]) => {
       console.log(`开始获取${role === "affirmative" ? "正方" : "反方"}的回复`);
-      const model = role === "affirmative" ? "deepseek-v3-1-250821" : "kimi-k2-250711";
-      const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY;
       
       // 添加加载中的消息
       const messageId = generateId();
@@ -238,34 +237,21 @@ ${role === "affirmative" ? "你代表正方，必须坚决支持该观点。" : 
 3. 反向论证：用对方的逻辑来证明你方观点的正确性`;
         }
 
-        // 构建消息数组
-        const apiMessages = [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ];
-
-        // 发送API请求
-        const response = await fetch("https://ark.cn-beijing.volces.com/api/v3/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: apiMessages,
-            temperature: config.temperature,
-            top_p: config.top_p,
-            max_tokens: config.max_tokens,
-          }),
+        // 使用统一API服务发送请求
+        console.log(`[辩论引擎] ${role === "affirmative" ? "正方" : "反方"}请求参数:`, {
+          temperature: config.temperature,
+          top_p: config.top_p,
+          max_tokens: config.max_tokens,
+          thinking: config.thinking,
         });
-
-        if (!response.ok) {
-          throw new Error(`API请求失败: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const aiResponse = data.choices[0].message.content;
+        
+        const aiRole = role === "affirmative" ? "AFFIRMATIVE" : "NEGATIVE";
+        const aiResponse = await aiService.sendDebaterRequest(
+          aiRole,
+          systemPrompt,
+          userContent,
+          config
+        );
 
         // 更新消息
         setState((prev) => ({
@@ -278,10 +264,17 @@ ${role === "affirmative" ? "你代表正方，必须坚决支持该观点。" : 
         return aiResponse;
       } catch (error) {
         console.error(`获取${role === "affirmative" ? "正方" : "反方"}回复时出错:`, error);
+        
+        // 根据错误类型显示不同的错误信息
+        let errorMessage = "AI回复获取失败，请重试。";
+        if (error instanceof APIError) {
+          errorMessage = `${error.provider || ''}模型请求失败: ${error.message}`;
+        }
+        
         setState((prev) => ({
           ...prev,
           messages: prev.messages.map((msg) =>
-            msg.id === messageId ? { ...msg, content: "AI回复获取失败，请重试。", loading: false } : msg
+            msg.id === messageId ? { ...msg, content: errorMessage, loading: false } : msg
           ),
         }));
         return null;
@@ -293,7 +286,6 @@ ${role === "affirmative" ? "你代表正方，必须坚决支持该观点。" : 
   // 调用主裁判API
   const fetchMainRefereeResponse = useCallback(
     async (messages: DebateMessage[]) => {
-      const apiKey = import.meta.env.VITE_DOUBAO_API_KEY;
       const messageId = generateId();
       setState(prev => ({
         ...prev,
@@ -315,16 +307,16 @@ ${role === "affirmative" ? "你代表正方，必须坚决支持该观点。" : 
 - 客观分析论证过程，非立场偏好
 - 专注技巧质量，避免主观偏见
 
-【统一量化评分标准】
-1. **逻辑性（7分）**：论证链条完整性
-   - 前提清晰度（0-2分）：基础假设表达明确程度
-   - 推理严密性（0-3分）：逻辑推导规范程度
-   - 结论合理性（0-2分）：结论必然性程度
+【统一量化评分标准（满分100分）】
+1. **逻辑性（70分）**：论证链条完整性
+   - 前提清晰度（0-20分）：基础假设表达明确程度
+   - 推理严密性（0-30分）：逻辑推导规范程度
+   - 结论合理性（0-20分）：结论必然性程度
 
-2. **说服力（3分）**：论据客观有效性
-   - 证据权威性（0-1.5分）：数据来源可信度和时效性
-   - 论据相关性（0-1分）：证据与论点直接关联度
-   - 反驳有效性（0-0.5分）：对对方观点针对性回应程度
+2. **说服力（30分）**：论据客观有效性
+   - 证据权威性（0-15分）：数据来源可信度和时效性
+   - 论据相关性（0-10分）：证据与论点直接关联度
+   - 反驳有效性（0-5分）：对对方观点针对性回应程度
 
 【输出要求】
 - 分析简洁精准，直击核心问题
@@ -336,27 +328,27 @@ ${role === "affirmative" ? "你代表正方，必须坚决支持该观点。" : 
 ## 📊 主裁判评分
 ### 正方分析
 **逻辑性：**
-- 前提清晰度：X.X/2.0分 [核心问题描述]
-- 推理严密性：X.X/3.0分 [核心问题描述]
-- 结论合理性：X.X/2.0分 [核心问题描述]
+- 前提清晰度：XX/20分 [核心问题描述]
+- 推理严密性：XX/30分 [核心问题描述]
+- 结论合理性：XX/20分 [核心问题描述]
 
 **说服力：**
-- 证据权威性：X.X/1.5分 [核心问题描述]
-- 论据相关性：X.X/1.0分 [核心问题描述]
-- 反驳有效性：X.X/0.5分 [核心问题描述]
-- **正方得分：X.X/10分**
+- 证据权威性：XX/15分 [核心问题描述]
+- 论据相关性：XX/10分 [核心问题描述]
+- 反驳有效性：XX/5分 [核心问题描述]
+- **正方得分：XX/100分**
 
 ### 反方分析
 **逻辑性：**
-- 前提清晰度：X.X/2.0分 [核心问题描述]
-- 推理严密性：X.X/3.0分 [核心问题描述]
-- 结论合理性：X.X/2.0分 [核心问题描述]
+- 前提清晰度：XX/20分 [核心问题描述]
+- 推理严密性：XX/30分 [核心问题描述]
+- 结论合理性：XX/20分 [核心问题描述]
 
 **说服力：**
-- 证据权威性：X.X/1.5分 [核心问题描述]
-- 论据相关性：X.X/1.0分 [核心问题描述]
-- 反驳有效性：X.X/0.5分 [核心问题描述]
-- **反方得分：X.X/10分**
+- 证据权威性：XX/15分 [核心问题描述]
+- 论据相关性：XX/10分 [核心问题描述]
+- 反驳有效性：XX/5分 [核心问题描述]
+- **反方得分：XX/100分**
 
 ## 🏆 主裁判裁决
 **获胜方：正方/反方/平局**
@@ -370,37 +362,45 @@ ${affirmativeMessages.map(msg => msg.content).join("\n\n")}
 反方发言：
 ${negativeMessages.map(msg => msg.content).join("\n\n")}`;
 
-        const response = await fetch("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "qwen-plus",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userContent },
-            ],
-            temperature: config.temperature,
-            top_p: config.top_p,
-            max_tokens: config.max_tokens,
-          }),
+        // 使用统一API服务发送请求
+        console.log(`[辩论引擎] 主裁判请求参数:`, {
+          temperature: config.temperature,
+          top_p: config.top_p,
+          max_tokens: config.max_tokens,
+          thinking: config.thinking,
         });
+        
+        const aiResponse = await aiService.sendRefereeRequest(
+          "MAIN_REFEREE",
+          systemPrompt,
+          userContent,
+          config
+        );
 
-        const data = await response.json();
-        const aiResponse = data.choices[0].message.content;
-
-        // 解析评分
-        let affirmativeScore = 7.0;
-        let negativeScore = 7.0;
+        // 解析评分（100分制）
+        let affirmativeScore = 70.0;
+        let negativeScore = 70.0;
         let winner: "affirmative" | "negative" | "tie" | null = null;
         
-        const affMatch = aiResponse.match(/正方得分[：:]\s*(\d+(?:\.\d+)?)/)
-        const negMatch = aiResponse.match(/反方得分[：:]\s*(\d+(?:\.\d+)?)/)
+        const affMatch = aiResponse.match(/正方得分[：:]\s*(\d{1,3}(?:\.\d+)?)/)
+        const negMatch = aiResponse.match(/反方得分[：:]\s*(\d{1,3}(?:\.\d+)?)/)
         
-        if (affMatch) affirmativeScore = parseFloat(affMatch[1]);
-        if (negMatch) negativeScore = parseFloat(negMatch[1]);
+        if (affMatch) {
+          affirmativeScore = parseFloat(affMatch[1]);
+          // 验证100分制评分范围
+          if (affirmativeScore > 100 || affirmativeScore < 0) {
+            console.warn(`[主裁判] 正方得分异常 ${affirmativeScore}，使用默认值 70.0`);
+            affirmativeScore = 70.0;
+          }
+        }
+        if (negMatch) {
+          negativeScore = parseFloat(negMatch[1]);
+          // 验证100分制评分范围
+          if (negativeScore > 100 || negativeScore < 0) {
+            console.warn(`[主裁判] 反方得分异常 ${negativeScore}，使用默认值 70.0`);
+            negativeScore = 70.0;
+          }
+        }
         
         if (aiResponse.includes("获胜方：正方")) winner = "affirmative";
         else if (aiResponse.includes("获胜方：反方")) winner = "negative";
@@ -425,10 +425,17 @@ ${negativeMessages.map(msg => msg.content).join("\n\n")}`;
         return { response: aiResponse, scores: mainScores, winner };
       } catch (error) {
         console.error("主裁判评分出错:", error);
+        
+        // 根据错误类型显示不同的错误信息
+        let errorMessage = "主裁判评分获取失败";
+        if (error instanceof APIError) {
+          errorMessage = `主裁判${error.provider || ''}模型请求失败: ${error.message}`;
+        }
+        
         setState(prev => ({
           ...prev,
           messages: prev.messages.map((msg) =>
-            msg.id === messageId ? { ...msg, content: "主裁判评分获取失败", loading: false } : msg
+            msg.id === messageId ? { ...msg, content: errorMessage, loading: false } : msg
           ),
         }));
         return null;
@@ -440,7 +447,6 @@ ${negativeMessages.map(msg => msg.content).join("\n\n")}`;
   // 调用副裁判API
   const fetchAssistantRefereeResponse = useCallback(
     async (messages: DebateMessage[]) => {
-      const apiKey = import.meta.env.VITE_KIMI_API_KEY;
       const messageId = generateId();
       setState(prev => ({
         ...prev,
@@ -462,16 +468,16 @@ ${negativeMessages.map(msg => msg.content).join("\n\n")}`;
 - 基于可衡量指标，避免主观猜测
 - 技术性评估，非情感认同
 
-【统一量化评分标准】
-1. **逻辑性（7分）**：论证链条完整性
-   - 前提清晰度（0-2分）：基础假设表达明确程度
-   - 推理严密性（0-3分）：逻辑推导规范程度
-   - 结论合理性（0-2分）：结论必然性程度
+【统一量化评分标准（满分100分）】
+1. **逻辑性（70分）**：论证链条完整性
+   - 前提清晰度（0-20分）：基础假设表达明确程度
+   - 推理严密性（0-30分）：逻辑推导规范程度
+   - 结论合理性（0-20分）：结论必然性程度
 
-2. **说服力（3分）**：论据客观有效性
-   - 证据权威性（0-1.5分）：数据来源可信度和时效性
-   - 论据相关性（0-1分）：证据与论点直接关联度
-   - 反驳有效性（0-0.5分）：对对方观点针对性回应程度
+2. **说服力（30分）**：论据客观有效性
+   - 证据权威性（0-15分）：数据来源可信度和时效性
+   - 论据相关性（0-10分）：证据与论点直接关联度
+   - 反驳有效性（0-5分）：对对方观点针对性回应程度
 
 【输出要求】
 - 独立分析，简洁锐利，不超过15字
@@ -483,27 +489,27 @@ ${negativeMessages.map(msg => msg.content).join("\n\n")}`;
 ## 📊 副裁判独立评分
 ### 正方技术分析
 **逻辑性：**
-- 前提清晰度：X.X/2.0分 [核心问题描述]
-- 推理严密性：X.X/3.0分 [核心问题描述]
-- 结论合理性：X.X/2.0分 [核心问题描述]
+- 前提清晰度：XX/20分 [核心问题描述]
+- 推理严密性：XX/30分 [核心问题描述]
+- 结论合理性：XX/20分 [核心问题描述]
 
 **说服力：**
-- 证据权威性：X.X/1.5分 [核心问题描述]
-- 论据相关性：X.X/1.0分 [核心问题描述]
-- 反驳有效性：X.X/0.5分 [核心问题描述]
-- **正方得分：X.X/10分**
+- 证据权威性：XX/15分 [核心问题描述]
+- 论据相关性：XX/10分 [核心问题描述]
+- 反驳有效性：XX/5分 [核心问题描述]
+- **正方得分：XX/100分**
 
 ### 反方技术分析
 **逻辑性：**
-- 前提清晰度：X.X/2.0分 [核心问题描述]
-- 推理严密性：X.X/3.0分 [核心问题描述]
-- 结论合理性：X.X/2.0分 [核心问题描述]
+- 前提清晰度：XX/20分 [核心问题描述]
+- 推理严密性：XX/30分 [核心问题描述]
+- 结论合理性：XX/20分 [核心问题描述]
 
 **说服力：**
-- 证据权威性：X.X/1.5分 [核心问题描述]
-- 论据相关性：X.X/1.0分 [核心问题描述]
-- 反驳有效性：X.X/0.5分 [核心问题描述]
-- **反方得分：X.X/10分**
+- 证据权威性：XX/15分 [核心问题描述]
+- 论据相关性：XX/10分 [核心问题描述]
+- 反驳有效性：XX/5分 [核心问题描述]
+- **反方得分：XX/100分**
 
 ## 🏆 副裁判独立裁决
 **推荐获胜方：正方/反方/平局**
@@ -517,37 +523,45 @@ ${affirmativeMessages.map(msg => msg.content).join("\n\n")}
 反方发言：
 ${negativeMessages.map(msg => msg.content).join("\n\n")}`;
 
-        const response = await fetch("https://ark.cn-beijing.volces.com/api/v3/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "doubao-seed-1-6-250615",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userContent },
-            ],
-            temperature: config.temperature,
-            top_p: config.top_p,
-            max_tokens: config.max_tokens,
-          }),
+        // 使用统一API服务发送请求
+        console.log(`[辩论引擎] 副裁判请求参数:`, {
+          temperature: config.temperature,
+          top_p: config.top_p,
+          max_tokens: config.max_tokens,
+          thinking: config.thinking,
         });
+        
+        const aiResponse = await aiService.sendRefereeRequest(
+          "ASSISTANT_REFEREE",
+          systemPrompt,
+          userContent,
+          config
+        );
 
-        const data = await response.json();
-        const aiResponse = data.choices[0].message.content;
-
-        // 解析评分
-        let affirmativeScore = 7.0;
-        let negativeScore = 7.0;
+        // 解析评分（100分制）
+        let affirmativeScore = 70.0;
+        let negativeScore = 70.0;
         let winner: "affirmative" | "negative" | "tie" | null = null;
         
-        const affMatch = aiResponse.match(/正方得分[：:]\s*(\d+(?:\.\d+)?)/)
-        const negMatch = aiResponse.match(/反方得分[：:]\s*(\d+(?:\.\d+)?)/)
+        const affMatch = aiResponse.match(/正方得分[：:]\s*(\d{1,3}(?:\.\d+)?)/)
+        const negMatch = aiResponse.match(/反方得分[：:]\s*(\d{1,3}(?:\.\d+)?)/)
         
-        if (affMatch) affirmativeScore = parseFloat(affMatch[1]);
-        if (negMatch) negativeScore = parseFloat(negMatch[1]);
+        if (affMatch) {
+          affirmativeScore = parseFloat(affMatch[1]);
+          // 验证100分制评分范围
+          if (affirmativeScore > 100 || affirmativeScore < 0) {
+            console.warn(`[副裁判] 正方得分异常 ${affirmativeScore}，使用默认值 70.0`);
+            affirmativeScore = 70.0;
+          }
+        }
+        if (negMatch) {
+          negativeScore = parseFloat(negMatch[1]);
+          // 验证100分制评分范围
+          if (negativeScore > 100 || negativeScore < 0) {
+            console.warn(`[副裁判] 反方得分异常 ${negativeScore}，使用默认值 70.0`);
+            negativeScore = 70.0;
+          }
+        }
         
         if (aiResponse.includes("推荐获胜方：正方")) winner = "affirmative";
         else if (aiResponse.includes("推荐获胜方：反方")) winner = "negative";
@@ -572,10 +586,17 @@ ${negativeMessages.map(msg => msg.content).join("\n\n")}`;
         return { response: aiResponse, scores: assistantScores, winner };
       } catch (error) {
         console.error("副裁判评分出错:", error);
+        
+        // 根据错误类型显示不同的错误信息
+        let errorMessage = "副裁判评分获取失败";
+        if (error instanceof APIError) {
+          errorMessage = `副裁判${error.provider || ''}模型请求失败: ${error.message}`;
+        }
+        
         setState(prev => ({
           ...prev,
           messages: prev.messages.map((msg) =>
-            msg.id === messageId ? { ...msg, content: "副裁判评分获取失败", loading: false } : msg
+            msg.id === messageId ? { ...msg, content: errorMessage, loading: false } : msg
           ),
         }));
         return null;

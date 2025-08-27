@@ -199,13 +199,13 @@ export default function Result() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">正方得分</span>
                     <span className="text-2xl font-bold text-blue-600">
-                      {finalState.mainRefereeScores?.affirmativeScore || 0}/10
+                      {finalState.mainRefereeScores?.affirmativeScore || 0}/100
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">反方得分</span>
                     <span className="text-2xl font-bold text-red-600">
-                      {finalState.mainRefereeScores?.negativeScore || 0}/10
+                      {finalState.mainRefereeScores?.negativeScore || 0}/100
                     </span>
                   </div>
                 </div>
@@ -222,13 +222,13 @@ export default function Result() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">正方得分</span>
                     <span className="text-2xl font-bold text-blue-600">
-                      {finalState.assistantRefereeScores?.affirmativeScore || 0}/10
+                      {finalState.assistantRefereeScores?.affirmativeScore || 0}/100
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">反方得分</span>
                     <span className="text-2xl font-bold text-red-600">
-                      {finalState.assistantRefereeScores?.negativeScore || 0}/10
+                      {finalState.assistantRefereeScores?.negativeScore || 0}/100
                     </span>
                   </div>
                 </div>
