@@ -53,13 +53,13 @@ export const API_PROVIDERS = {
   // 阿里云通义千问
   QWEN: {
     baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    apiKey: "sk-9d0c604bf1e9426ea672b28a9d2b2e0e",
+    apiKey: "这里填写APIKey",
     timeout: 60000,
   },
   // 字节跳动豆包
   DOUBAO: {
     baseURL: "https://ark.cn-beijing.volces.com/api/v3",
-    apiKey: "0a759134-964b-4aaa-b81c-4e6713540c72", 
+    apiKey: "这里填写APIKey", 
     timeout: 60000,
   },
 } as const;
